@@ -6,6 +6,7 @@ import altair as alt
 import vectorbt as vbt
 import pandas as pd
 from strategies.sma_crossover import SMACrossover
+from utils.advanced_runtime import advancedRuntimeSMA
 
 # -- Page Config --
 
@@ -41,6 +42,9 @@ section[data-testid="stMain"] > div[data-testid="stMainBlockContainer"] {
 """,
     unsafe_allow_html=True,
 )
+if "advancedPortfolio" not in st.session_state:
+    st.session_state["advancedPortfolio"] = None
+
 
 Header()
 tab1, tab2, tab3 = st.tabs(["Trades", "Equity", "Deep Analysis"])
@@ -102,24 +106,28 @@ with tab2:
         area = area1 + area2
         st.altair_chart(area, use_container_width=True)
 with tab3:
+    col1, col2 = st.columns([3, 1])
     if st.session_state.portfolio != None:
-        options = st.multiselect(
-            "Tickers",
-            tickerSuggestions,
-            default=["BTC-USD"],
-        )
-        if st.session_state.strategy == "SMA":
-            smaSlow = st.slider("Slow SMA", 0, 200, 50)
-            smaFast = st.slider("Fast SMA", 0, 200, 20)
-            portfolioEquities = []
-            for i in options:
+        with col1:
+            if st.session_state.advancedPortfolio != None:
 
-                runStrat = runStrategy(st.session_state.portfolio)
-                df = vbt.YFData.download(i).get("Close")
-                portfolioEquities.append(
-                    runStrategy(
-                        SMACrossover(df, sma_fast=smaFast, sma_slow=smaSlow)
-                    ).equityCurveData()
+                deepAnalysisGraphBox = st.container(border=True)
+                deepAnalysisGraphBox.plotly_chart(
+                    st.session_state.advancedPortfolio,
+                    use_container_width=True,
                 )
 
-        deepAnalysisGraphBox = st.container(border=True)
+        with col2:
+
+            options = st.multiselect(
+                "Tickers",
+                tickerSuggestions,
+                default=["BTC-USD"],
+            )
+            if st.session_state.strategy == "SMA":
+                smaSlow = st.slider("Slow SMA", 0, 200, 50)
+                smaFast = st.slider("Fast SMA", 0, 200, 20)
+                portfolioEquities = []
+                if st.button("Run Strategy", width="stretch"):
+                    advancedRuntimeSMA(options, smaFast, smaSlow, portfolioEquities)
+                    st.session_state.advancedPortfolio = portfolioEquities
