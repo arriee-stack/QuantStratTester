@@ -7,6 +7,7 @@ import vectorbt as vbt
 import pandas as pd
 from strategies.sma_crossover import SMACrossover
 from utils.advanced_runtime import advancedRuntimeSMA
+from utils.color_randomizer import ColorRandomizer
 
 # -- Page Config --
 
@@ -112,11 +113,28 @@ with tab3:
             if st.session_state.advancedPortfolio != None:
 
                 deepAnalysisGraphBox = st.container(border=True)
-                deepAnalysisGraphBox.plotly_chart(
-                    st.session_state.advancedPortfolio,
-                    use_container_width=True,
-                )
+                print(st.session_state.advancedPortfolio)
+                dfs = []
 
+                for df, ticker in zip(
+                    st.session_state.advancedPortfolio, st.session_state.options
+                ):
+                    df = df.copy()
+                    df["label"] = ticker
+                    dfs.append(df)
+                combined = pd.concat(dfs, ignore_index=True)
+                chart = (
+                    alt.Chart(combined)
+                    .mark_line()
+                    .encode(
+                        x=alt.X("time:T", title="Time"),
+                        y=alt.Y("equity:Q", title="Equity"),
+                        color=alt.Color(
+                            "label:N", legend=alt.Legend(title="Strategy / Ticker")
+                        ),
+                    )
+                )
+                deepAnalysisGraphBox.altair_chart(chart, use_container_width=True)
         with col2:
 
             options = st.multiselect(
@@ -124,10 +142,12 @@ with tab3:
                 tickerSuggestions,
                 default=["BTC-USD"],
             )
+            st.session_state.options = options
             if st.session_state.strategy == "SMA":
                 smaSlow = st.slider("Slow SMA", 0, 200, 50)
                 smaFast = st.slider("Fast SMA", 0, 200, 20)
                 portfolioEquities = []
                 if st.button("Run Strategy", width="stretch"):
+
                     advancedRuntimeSMA(options, smaFast, smaSlow, portfolioEquities)
                     st.session_state.advancedPortfolio = portfolioEquities
